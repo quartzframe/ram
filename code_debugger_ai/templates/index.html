@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Debugger AI</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg: #080b12;
+            --panel: rgba(17, 23, 35, 0.86);
+            --panel2: #101725;
+            --border: rgba(148, 163, 184, 0.15);
+            --text: #eef2ff;
+            --muted: #91a0b8;
+            --accent: #8b5cf6;
+            --accent2: #06b6d4;
+            --danger: #fb7185;
+            --success: #34d399;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(139,92,246,.16), transparent 30%),
+                radial-gradient(circle at 90% 15%, rgba(6,182,212,.12), transparent 28%),
+                var(--bg);
+        }
+        .app { max-width: 1450px; margin: auto; padding: 28px; }
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 18px; margin-bottom: 24px;
+        }
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .logo {
+            width: 48px; height: 48px; display: grid; place-items: center;
+            border-radius: 14px; font-size: 23px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            box-shadow: 0 12px 35px rgba(6,182,212,.18);
+        }
+        h1 { margin: 0; font-size: 25px; }
+        .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+        .badge {
+            padding: 8px 12px; border: 1px solid var(--border);
+            background: rgba(255,255,255,.035); border-radius: 999px;
+            color: #cbd5e1; font-size: 12px;
+        }
+        .grid {
+            display: grid; grid-template-columns: 1.08fr .92fr; gap: 20px;
+        }
+        .card {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 20px; padding: 20px;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 20px 70px rgba(0,0,0,.2);
+        }
+        .card h2 { font-size: 16px; margin: 0 0 15px; }
+        label { display: block; color: #b8c4d9; font-size: 12px; margin: 14px 0 7px; }
+        select, textarea, input {
+            width: 100%; color: var(--text); background: #0b111d;
+            border: 1px solid var(--border); border-radius: 12px;
+            outline: none; transition: .2s;
+        }
+        select, input { padding: 12px 13px; }
+        textarea {
+            padding: 14px; resize: vertical; min-height: 115px;
+            font-family: "JetBrains Mono", Consolas, monospace; font-size: 13px;
+            line-height: 1.55;
+        }
+        #code { min-height: 370px; }
+        select:focus, textarea:focus, input:focus {
+            border-color: rgba(139,92,246,.7);
+            box-shadow: 0 0 0 3px rgba(139,92,246,.1);
+        }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .actions { display: flex; gap: 10px; margin-top: 14px; }
+        button {
+            border: 0; cursor: pointer; color: white; font-weight: 700;
+            padding: 12px 18px; border-radius: 12px; transition: .2s;
+        }
+        #debugBtn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--accent), #6d5dfc);
+        }
+        #clearBtn { background: #182234; border: 1px solid var(--border); }
+        button:hover { transform: translateY(-1px); filter: brightness(1.08); }
+        button:disabled { opacity: .55; cursor: wait; transform: none; }
+        .hint { color: var(--muted); font-size: 11px; margin-top: 9px; }
+        .result {
+            min-height: 620px; display: flex; flex-direction: column;
+        }
+        .empty {
+            flex: 1; display: grid; place-items: center; text-align: center;
+            color: var(--muted); padding: 50px 25px;
+        }
+        .empty-icon { font-size: 45px; margin-bottom: 10px; }
+        .section { margin-top: 18px; }
+        .section-title {
+            color: #cbd5e1; font-size: 12px; font-weight: 800;
+            text-transform: uppercase; letter-spacing: .08em; margin-bottom: 9px;
+        }
+        .summary {
+            padding: 13px; border-radius: 12px;
+            background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.18);
+            line-height: 1.55; font-size: 13px;
+        }
+        .issue {
+            padding: 12px; margin-bottom: 8px; border-radius: 12px;
+            background: #0c1320; border: 1px solid var(--border);
+        }
+        .issue strong { display: block; margin-bottom: 4px; }
+        .issue small { color: var(--accent2); }
+        .issue p { margin: 7px 0 0; color: #b9c5d8; font-size: 13px; line-height: 1.5; }
+        pre {
+            white-space: pre-wrap; word-break: break-word; margin: 0;
+            padding: 15px; background: #070b12; border: 1px solid var(--border);
+            border-radius: 13px; overflow: auto; font-size: 12px;
+            line-height: 1.55; color: #dbeafe;
+        }
+        .list { margin: 0; padding-left: 20px; color: #bac6d8; font-size: 13px; line-height: 1.7; }
+        .status { margin-top: 10px; font-size: 12px; color: var(--muted); }
+        .error { color: var(--danger); }
+        .success { color: var(--success); }
+        @media (max-width: 950px) {
+            .grid { grid-template-columns: 1fr; }
+            .result { min-height: 400px; }
+        }
+        @media (max-width: 600px) {
+            .app { padding: 16px; }
+            header { align-items: flex-start; }
+            .badge { display: none; }
+            .row { grid-template-columns: 1fr; }
+            #code { min-height: 300px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <header>
+        <div class="brand">
+            <div class="logo">⌘</div>
+            <div>
+                <h1>Code Debugger AI</h1>
+                <p class="subtitle">Find bugs. Understand errors. Fix code.</p>
+            </div>
+        </div>
+        <div class="badge">Gemini-powered • Programming only</div>
+    </header>
+
+    <main class="grid">
+        <section class="card">
+            <h2>Debug your code</h2>
+
+            <div class="row">
+                <div>
+                    <label for="language">Language</label>
+                    <select id="language">
+                        <option>Python</option>
+                        <option>JavaScript</option>
+                        <option>TypeScript</option>
+                        <option>Java</option>
+                        <option>C</option>
+                        <option>C++</option>
+                        <option>C#</option>
+                        <option>Go</option>
+                        <option>Rust</option>
+                        <option>PHP</option>
+                        <option>Ruby</option>
+                        <option>Kotlin</option>
+                        <option>Swift</option>
+                        <option>SQL</option>
+                        <option>HTML</option>
+                        <option>CSS</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="expected">Expected behavior</label>
+                    <input id="expected" placeholder="What should the code do?">
+                </div>
+            </div>
+
+            <label for="code">Your code</label>
+            <textarea id="code" spellcheck="false" placeholder="Paste your code here..."></textarea>
+
+            <label for="error">Error message / stack trace (optional)</label>
+            <textarea id="error" placeholder="Paste the error message here if you have one..."></textarea>
+
+            <div class="actions">
+                <button id="debugBtn" onclick="debugCode()">🐞 Debug Code</button>
+                <button id="clearBtn" onclick="clearAll()">Clear</button>
+            </div>
+            <div class="hint">Tip: Include the full error message and expected behavior for a more precise diagnosis.</div>
+            <div id="status" class="status"></div>
+        </section>
+
+        <section class="card result" id="result">
+            <div class="empty">
+                <div>
+                    <div class="empty-icon">🔎</div>
+                    <strong>Debug result will appear here</strong>
+                    <p>Paste code on the left and let the AI inspect it.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    async function debugCode() {
+        const language = document.getElementById("language").value;
+        const code = document.getElementById("code").value.trim();
+        const errorMessage = document.getElementById("error").value.trim();
+        const expectedBehavior = document.getElementById("expected").value.trim();
+        const btn = document.getElementById("debugBtn");
+        const status = document.getElementById("status");
+        const result = document.getElementById("result");
+
+        if (!code) {
+            status.innerHTML = '<span class="error">Please paste your code first.</span>';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Analyzing...";
+        status.textContent = "Inspecting your code...";
+        result.innerHTML = `
+            <div class="empty">
+                <div>
+                    <div class="empty-icon">⚙️</div>
+                    <strong>AI is analyzing your code...</strong>
+                    <p>Checking syntax, errors, logic, and possible fixes.</p>
+                </div>
+            </div>`;
+
+        try {
+            const response = await fetch("/debug", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    language,
+                    code,
+                    error_message: errorMessage,
+                    expected_behavior: expectedBehavior
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Debugging request failed.");
+            }
+
+            renderResult(data);
+            status.innerHTML = '<span class="success">Analysis complete.</span>';
+        } catch (error) {
+            result.innerHTML = `
+                <div class="empty">
+                    <div>
+                        <div class="empty-icon">⚠️</div>
+                        <strong>Could not complete the analysis</strong>
+                        <p class="error">${escapeHtml(error.message)}</p>
+                    </div>
+                </div>`;
+            status.innerHTML = '<span class="error">Request failed. Try again.</span>';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "🐞 Debug Code";
+        }
+    }
+
+    function renderResult(data) {
+        const issues = Array.isArray(data.errors) ? data.errors : [];
+        const steps = Array.isArray(data.explanation) ? data.explanation : [];
+        const tips = Array.isArray(data.best_practices) ? data.best_practices : [];
+
+        const issueHtml = issues.length
+            ? issues.map(issue => `
+                <div class="issue">
+                    <strong>${escapeHtml(issue.title || "Issue")}</strong>
+                    <small>${escapeHtml(issue.line_or_area || "Area not specified")}</small>
+                    <p>${escapeHtml(issue.explanation || "")}</p>
+                </div>`).join("")
+            : `<div class="summary">No specific errors were identified from the supplied information.</div>`;
+
+        document.getElementById("result").innerHTML = `
+            <h2>Debug analysis</h2>
+
+            <div class="section">
+                <div class="section-title">Diagnosis</div>
+                <div class="summary">${escapeHtml(data.summary || "Analysis completed.")}</div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Issues found</div>
+                ${issueHtml}
+            </div>
+
+            <div class="section">
+                <div class="section-title">Corrected code</div>
+                <pre>${escapeHtml(data.fixed_code || "")}</pre>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Why this fix works</div>
+                <ol class="list">
+                    ${steps.map(step => `<li>${escapeHtml(step)}</li>`).join("")}
+                </ol>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Best practices</div>
+                <ul class="list">
+                    ${tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join("")}
+                </ul>
+            </div>`;
+    }
+
+    function clearAll() {
+        document.getElementById("code").value = "";
+        document.getElementById("error").value = "";
+        document.getElementById("expected").value = "";
+        document.getElementById("status").textContent = "";
+        document.getElementById("result").innerHTML = `
+            <div class="empty">
+                <div>
+                    <div class="empty-icon">🔎</div>
+                    <strong>Debug result will appear here</strong>
+                    <p>Paste code on the left and let the AI inspect it.</p>
+                </div>
+            </div>`;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+</script>
+</body>
+</html>
